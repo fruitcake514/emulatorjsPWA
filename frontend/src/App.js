@@ -11,6 +11,32 @@ const sendInput = (button, state) => {
 
 const API_URL = "http://localhost:4000";
 const socket = io(API_URL);
+const saveGame = async () => {
+  await fetch(`${API_URL}/save`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ gameId, saveData: "example_save_data" }),
+  });
+};
+
+const loadGame = async () => {
+  const response = await fetch(`${API_URL}/load/${gameId}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await response.json();
+  console.log("Loaded save:", data);
+};
+
+// Inside the return statement:
+{gameId && (
+  <>
+    <button onClick={saveGame}>Save Game</button>
+    <button onClick={loadGame}>Load Game</button>
+  </>
+)}
 
 const App = () => {
   const [games, setGames] = useState([]);
