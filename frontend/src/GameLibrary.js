@@ -1,18 +1,40 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 
-const GameLibrary = ({ token }) => {
-  const [roms, setRoms] = useState([]);
-  
+const API_URL = "http://localhost:4000";
+
+const GameLibrary = ({ token, startGame }) => {
+  const [games, setGames] = useState([]);
+
   useEffect(() => {
-    fetch("http://localhost:4000/roms?system=nes", { headers: { Authorization: `Bearer ${token}` } })
-      .then(res => res.json())
-      .then(setRoms);
+    if (!token) return;
+
+    const fetchGames = async () => {
+      const response = await fetch(`${API_URL}/games`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await response.json();
+      setGames(data);
+    };
+
+    fetchGames();
   }, [token]);
 
   return (
     <div>
       <h1>Game Library</h1>
-      {roms.map(rom => <button key={rom.id} onClick={() => startGame(rom.path)}>{rom.name}</button>)}
+      {!token ? (
+        <p>Please log in to see available games.</p>
+      ) : (
+        <ul>
+          {games.map((game) => (
+            <li key={game.id}>
+              <img src={game.cover?.url} alt={game.name} />
+              <p>{game.name}</p>
+              <button onClick={() => startGame(game.id)}>Play</button>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 };
