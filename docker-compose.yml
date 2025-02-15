@@ -1,46 +1,36 @@
-version: "3.8"
+version: '3.8'
 
 services:
   backend:
-    image: ghcr.io/fruitcake514/emulatorjsPWA/backend:latest
-    restart: always
-    ports:
-      - "4000:4000"
-    env_file:
-      - backend/.env
+    build: .
+    environment:
+      - PORT=4000
+      - DB_PATH=/app/database.sqlite
+      - SECRET_KEY=your_secret_key
     volumes:
-      - backend-data:/app/data
-      - roms:/app/roms
-    depends_on:
-      - db
+      - ./backend/database.sqlite:/app/database.sqlite
+    networks:
+      - app_network
+    restart: always
 
   frontend:
-    image: ghcr.io/fruitcake514/emulatorjsPWA/frontend:latest
-    restart: always
-    ports:
-      - "3000:3000"
+    build: .
+    environment:
+      - REACT_APP_API_URL=http://backend:4000
+    depends_on:
+      - backend
+    networks:
+      - app_network
 
   emulator:
-    image: ghcr.io/fruitcake514/emulatorjsPWA/backend:latest
-    restart: always
-    ports:
-      - "8080:8080"
-    volumes:
-      - roms:/usr/share/emulator/roms
-      - saves:/usr/share/emulator/saves
-
-  db:
-    image: postgres:latest
-    restart: always
+    build: .
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: games
-    volumes:
-      - db-data:/var/lib/postgresql/data
+      - PORT=5000
+    depends_on:
+      - backend
+    networks:
+      - app_network
 
-volumes:
-  backend-data:
-  roms:
-  saves:
-  db-data:
+networks:
+  app_network:
+    driver: bridge
