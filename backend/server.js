@@ -13,6 +13,51 @@ app.post("/save", authenticate, async (req, res) => {
   );
   res.json({ message: "Game saved!" });
 });
+const multer = require("multer");
+const path = require("path");
+const fs = require("fs");
+
+// Define storage for ROMs
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    const { system } = req.body;
+    const uploadPath = path.join(__dirname, `roms/${system}`);
+    
+    if (!fs.existsSync(uploadPath)) {
+      fs.mkdirSync(uploadPath, { recursive: true });
+    }
+
+    cb(null, uploadPath);
+  },
+  filename: function (req, file, cb) {
+    cb(null, file.originalname);
+  },
+});
+
+const upload = multer({ storage });
+
+// Admin route to upload ROMs
+app.post("/admin/upload-rom", authenticate, upload.single("rom"), async (req, res) => {
+  if (!req.user.is_admin) return res.status(403).json({ error: "Forbidden" });
+
+  const { system } = req.body;
+  const romName = req.file.filename;
+
+  // Store in DB
+  await pool.query(
+    "INSERT INTO roms (name, system, path) VALUES ($1, $2, $3) ON CONFLICT (name, system) DO NOTHING",
+    [romName, system, `/roms/${system}/${romName}`]
+  );
+
+  res.json({ message: "ROM uploaded successfully!" });
+});
+
+// Fetch list of ROMs
+app.get("/roms", async (req, res) => {
+  const { system } = req.query;
+  const result = await pool.query("SELECT * FROM roms WHERE system = $1", [system]);
+  res.json(result.rows);
+});
 
 app.get("/load/:gameId", authenticate, async (req, res) => {
   const { gameId } = req.params;
