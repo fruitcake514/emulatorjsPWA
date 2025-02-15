@@ -1,6 +1,19 @@
 import React, { useState, useEffect, useRef } from "react";
 import io from "socket.io-client";
 import Gamepad from "./Gamepad";
+import { BrowserRouter as Router, Route, Link, Switch } from "react-router-dom";
+import AdminPanel from "./AdminPanel";
+
+<Router>
+  <nav>
+    <Link to="/">Home</Link>
+    {isAdmin && <Link to="/admin">Admin Panel</Link>}
+  </nav>
+  <Switch>
+    <Route path="/" exact component={GameLibrary} />
+    <Route path="/admin" component={() => <AdminPanel token={token} />} />
+  </Switch>
+</Router>
 
 const sendInput = (button, state) => {
   socket.emit("game_input", { button, state });
