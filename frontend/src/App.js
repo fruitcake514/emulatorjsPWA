@@ -1,93 +1,11 @@
 import React, { useState, useEffect, useRef } from "react";
 import io from "socket.io-client";
-import Gamepad from "./Gamepad";
 import { BrowserRouter as Router, Route, Link, Switch } from "react-router-dom";
+import Gamepad from "./Gamepad";
 import AdminPanel from "./AdminPanel";
-import React, { useState } from "react";
-
-const API_URL = "http://localhost:4000";
-
-const AdminPanel = ({ token }) => {
-  const [romFile, setRomFile] = useState(null);
-  const [system, setSystem] = useState("");
-
-  const uploadRom = async () => {
-    const formData = new FormData();
-    formData.append("rom", romFile);
-    formData.append("system", system);
-
-    await fetch(`${API_URL}/admin/upload-rom`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}` },
-      body: formData,
-    });
-
-    alert("ROM uploaded!");
-  };
-
-  return (
-    <div>
-      <h2>Upload ROM</h2>
-      <select onChange={(e) => setSystem(e.target.value)}>
-        <option value="">Select System</option>
-        <option value="nes">NES</option>
-        <option value="snes">SNES</option>
-        <option value="ps1">PS1</option>
-      </select>
-      <input type="file" onChange={(e) => setRomFile(e.target.files[0])} />
-      <button onClick={uploadRom}>Upload ROM</button>
-    </div>
-  );
-};
-
-export default AdminPanel;
-
-<Router>
-  <nav>
-    <Link to="/">Home</Link>
-    {isAdmin && <Link to="/admin">Admin Panel</Link>}
-  </nav>
-  <Switch>
-    <Route path="/" exact component={GameLibrary} />
-    <Route path="/admin" component={() => <AdminPanel token={token} />} />
-  </Switch>
-</Router>
-
-const sendInput = (button, state) => {
-  socket.emit("game_input", { button, state });
-};
-
-// Inside the return statement:
-{gameId && <Gamepad sendInput={sendInput} />}
 
 const API_URL = "http://localhost:4000";
 const socket = io(API_URL);
-const saveGame = async () => {
-  await fetch(`${API_URL}/save`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify({ gameId, saveData: "example_save_data" }),
-  });
-};
-
-const loadGame = async () => {
-  const response = await fetch(`${API_URL}/load/${gameId}`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  const data = await response.json();
-  console.log("Loaded save:", data);
-};
-
-// Inside the return statement:
-{gameId && (
-  <>
-    <button onClick={saveGame}>Save Game</button>
-    <button onClick={loadGame}>Load Game</button>
-  </>
-)}
 
 const App = () => {
   const [games, setGames] = useState([]);
@@ -113,7 +31,6 @@ const App = () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username: "user", password: "pass" }),
     });
-
     const data = await response.json();
     setToken(data.token);
   };
@@ -121,13 +38,12 @@ const App = () => {
   const startGame = async (id) => {
     setGameId(id);
     socket.emit("start_game", id);
-    
-    // WebRTC setup
+
     peerConnection.current = new RTCPeerConnection();
     peerConnection.current.ontrack = (event) => {
       videoRef.current.srcObject = event.streams[0];
     };
-    
+
     peerConnection.current.onicecandidate = (event) => {
       if (event.candidate) {
         socket.emit("ice_candidate", { target: id, candidate: event.candidate });
@@ -139,29 +55,64 @@ const App = () => {
     socket.emit("webrtc_offer", { target: id, offer });
   };
 
+  const saveGame = async () => {
+    await fetch(`${API_URL}/save`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ gameId, saveData: "example_save_data" }),
+    });
+  };
+
+  const loadGame = async () => {
+    const response = await fetch(`${API_URL}/load/${gameId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = await response.json();
+    console.log("Loaded save:", data);
+  };
+
   return (
-    <div>
-      <h1>Game Library</h1>
-      {!token ? (
-        <button onClick={handleLogin}>Login</button>
-      ) : (
-        <ul>
-          {games.map((game) => (
-            <li key={game.id}>
-              <img src={game.cover?.url} alt={game.name} />
-              <p>{game.name}</p>
-              <button onClick={() => startGame(game.id)}>Play</button>
-            </li>
-          ))}
-        </ul>
-      )}
-      {gameId && (
-        <div>
-          <h2>Streaming Game...</h2>
-          <video ref={videoRef} autoPlay playsInline></video>
-        </div>
-      )}
-    </div>
+    <Router>
+      <nav>
+        <Link to="/">Home</Link>
+        {token && <Link to="/admin">Admin Panel</Link>}
+      </nav>
+      <Switch>
+        <Route path="/" exact>
+          <div>
+            <h1>Game Library</h1>
+            {!token ? (
+              <button onClick={handleLogin}>Login</button>
+            ) : (
+              <ul>
+                {games.map((game) => (
+                  <li key={game.id}>
+                    <img src={game.cover?.url} alt={game.name} />
+                    <p>{game.name}</p>
+                    <button onClick={() => startGame(game.id)}>Play</button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {gameId && (
+              <div>
+                <h2>Streaming Game...</h2>
+                <video ref={videoRef} autoPlay playsInline></video>
+                <button onClick={saveGame}>Save Game</button>
+                <button onClick={loadGame}>Load Game</button>
+                <Gamepad sendInput={(button, state) => socket.emit("game_input", { button, state })} />
+              </div>
+            )}
+          </div>
+        </Route>
+        <Route path="/admin">
+          <AdminPanel token={token} />
+        </Route>
+      </Switch>
+    </Router>
   );
 };
 
