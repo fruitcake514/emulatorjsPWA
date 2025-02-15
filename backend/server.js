@@ -19,6 +19,9 @@ io.on("connection", (socket) => {
     gameSessions[socket.id] = gameId;
     io.to(socket.id).emit("game_started", { message: "Game session started" });
   });
+socket.on("game_input", (data) => {
+  io.to(gameSessions[socket.id]).emit("game_input", data);
+});
 
   socket.on("webrtc_offer", (data) => {
     io.to(data.target).emit("webrtc_offer", data);
