@@ -13,7 +13,6 @@ const io = socketIo(server, { cors: { origin: "*" } });
 app.use(cors());
 app.use(express.json());
 
-// Routes
 app.use("/auth", authRoutes);
 app.use("/admin", adminRoutes);
 app.use("/games", gameRoutes);
@@ -31,14 +30,10 @@ io.on("connection", (socket) => {
     io.emit("game_input", data);
   });
 
-  socket.on("webrtc_offer", (data) => {
-    io.emit("webrtc_offer", data);
-  });
-
   socket.on("disconnect", () => {
     console.log("Client disconnected");
   });
 });
 
-const PORT = 4000;
+const PORT = process.env.PORT || 4000;
 server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
