@@ -16,3 +16,10 @@ CREATE TABLE IF NOT EXISTS saves (
   game_id TEXT NOT NULL,
   data TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS roms (
+  id SERIAL PRIMARY KEY,
+  name TEXT NOT NULL,
+  system TEXT NOT NULL,
+  path TEXT NOT NULL,
+  UNIQUE(name, system)
+);
