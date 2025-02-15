@@ -1,0 +1,18 @@
+CREATE TABLE IF NOT EXISTS users (
+  id SERIAL PRIMARY KEY,
+  username TEXT UNIQUE NOT NULL,
+  password TEXT NOT NULL,
+  is_admin BOOLEAN DEFAULT FALSE
+);
+
+CREATE TABLE IF NOT EXISTS settings (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS saves (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER REFERENCES users(id),
+  game_id TEXT NOT NULL,
+  data TEXT NOT NULL
+);
