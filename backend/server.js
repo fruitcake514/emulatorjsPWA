@@ -2,9 +2,7 @@ const express = require("express");
 const http = require("http");
 const socketIo = require("socket.io");
 const cors = require("cors");
-const authRoutes = require("./routes/auth");
-const adminRoutes = require("./routes/admin");
-const gameRoutes = require("./routes/games");
+const db = require("./config/db");
 
 const app = express();
 const server = http.createServer(app);
@@ -13,20 +11,20 @@ const io = socketIo(server, { cors: { origin: "*" } });
 app.use(cors());
 app.use(express.json());
 
-app.use("/auth", authRoutes);
-app.use("/admin", adminRoutes);
-app.use("/games", gameRoutes);
+// Routes
+app.use("/auth", require("./routes/auth"));
+app.use("/admin", require("./routes/admin"));
+app.use("/games", require("./routes/games"));
 
+// Socket.io for game control
 io.on("connection", (socket) => {
   console.log("New client connected");
 
   socket.on("start_game", (gameId) => {
-    console.log(`Starting game ${gameId}`);
     io.emit("game_started", gameId);
   });
 
   socket.on("game_input", (data) => {
-    console.log("Input received:", data);
     io.emit("game_input", data);
   });
 
