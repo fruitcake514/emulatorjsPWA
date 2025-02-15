@@ -3,6 +3,41 @@ import cors from "cors";
 import dotenv from "dotenv";
 import jwt from "jsonwebtoken";
 import { Pool } from "pg";
+import { Server } from "socket.io";
+import http from "http";
+
+const server = http.createServer(app);
+const io = new Server(server, { cors: { origin: "*" } });
+
+const gameSessions = {}; // Stores active sessions
+
+// Handle WebRTC signaling
+io.on("connection", (socket) => {
+  console.log("Client connected:", socket.id);
+
+  socket.on("start_game", (gameId) => {
+    gameSessions[socket.id] = gameId;
+    io.to(socket.id).emit("game_started", { message: "Game session started" });
+  });
+
+  socket.on("webrtc_offer", (data) => {
+    io.to(data.target).emit("webrtc_offer", data);
+  });
+
+  socket.on("webrtc_answer", (data) => {
+    io.to(data.target).emit("webrtc_answer", data);
+  });
+
+  socket.on("ice_candidate", (data) => {
+    io.to(data.target).emit("ice_candidate", data);
+  });
+
+  socket.on("disconnect", () => {
+    delete gameSessions[socket.id];
+  });
+});
+
+server.listen(4000, () => console.log("Backend running on port 4000"));
 
 dotenv.config();
 const app = express();
