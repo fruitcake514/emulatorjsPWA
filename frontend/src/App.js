@@ -1,5 +1,13 @@
 import React, { useState, useEffect, useRef } from "react";
 import io from "socket.io-client";
+import Gamepad from "./Gamepad";
+
+const sendInput = (button, state) => {
+  socket.emit("game_input", { button, state });
+};
+
+// Inside the return statement:
+{gameId && <Gamepad sendInput={sendInput} />}
 
 const API_URL = "http://localhost:4000";
 const socket = io(API_URL);
