@@ -5,6 +5,28 @@ import jwt from "jsonwebtoken";
 import { Pool } from "pg";
 import { Server } from "socket.io";
 import http from "http";
+app.post("/save", authenticate, async (req, res) => {
+  const { gameId, saveData } = req.body;
+  await pool.query(
+    "INSERT INTO saves (user_id, game_id, data) VALUES ($1, $2, $3) ON CONFLICT (user_id, game_id) DO UPDATE SET data = EXCLUDED.data",
+    [req.user.id, gameId, saveData]
+  );
+  res.json({ message: "Game saved!" });
+});
+
+app.get("/load/:gameId", authenticate, async (req, res) => {
+  const { gameId } = req.params;
+  const result = await pool.query(
+    "SELECT data FROM saves WHERE user_id = $1 AND game_id = $2",
+    [req.user.id, gameId]
+  );
+
+  if (result.rows.length > 0) {
+    res.json({ saveData: result.rows[0].data });
+  } else {
+    res.status(404).json({ message: "No save found" });
+  }
+});
 
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: "*" } });
