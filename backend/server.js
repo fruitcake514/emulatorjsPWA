@@ -5,6 +5,104 @@ import jwt from "jsonwebtoken";
 import { Pool } from "pg";
 import { Server } from "socket.io";
 import http from "http";
+const express = require("express");
+const cors = require("cors");
+const jwt = require("jsonwebtoken");
+const bcrypt = require("bcrypt");
+const multer = require("multer");
+const fs = require("fs");
+const path = require("path");
+const { Pool } = require("pg");
+const http = require("http");
+const socketIo = require("socket.io");
+require("dotenv").config();
+
+const app = express();
+const server = http.createServer(app);
+const io = socketIo(server, { cors: { origin: "*" } });
+
+app.use(cors());
+app.use(express.json());
+
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+
+// Middleware for authentication
+const authenticate = async (req, res, next) => {
+  const token = req.headers.authorization?.split(" ")[1];
+  if (!token) return res.status(401).json({ error: "Unauthorized" });
+
+  try {
+    req.user = jwt.verify(token, process.env.JWT_SECRET);
+    next();
+  } catch {
+    res.status(403).json({ error: "Forbidden" });
+  }
+};
+
+// *** USER AUTH ***
+app.post("/login", async (req, res) => {
+  const { username, password } = req.body;
+  const result = await pool.query("SELECT * FROM users WHERE username = $1", [username]);
+  
+  if (result.rows.length && bcrypt.compareSync(password, result.rows[0].password)) {
+    const token = jwt.sign({ id: result.rows[0].id, is_admin: result.rows[0].is_admin }, process.env.JWT_SECRET);
+    res.json({ token });
+  } else {
+    res.status(401).json({ error: "Invalid credentials" });
+  }
+});
+
+// *** ADMIN PANEL: API KEYS & USER MANAGEMENT ***
+app.post("/admin/set-api-key", authenticate, async (req, res) => {
+  if (!req.user.is_admin) return res.status(403).json({ error: "Forbidden" });
+
+  const { key, value } = req.body;
+  await pool.query("INSERT INTO settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value", [key, value]);
+  res.json({ message: "API key saved!" });
+});
+
+app.post("/admin/create-user", authenticate, async (req, res) => {
+  if (!req.user.is_admin) return res.status(403).json({ error: "Forbidden" });
+
+  const { username, password, isAdmin } = req.body;
+  const hashedPassword = bcrypt.hashSync(password, 10);
+  await pool.query("INSERT INTO users (username, password, is_admin) VALUES ($1, $2, $3)", [username, hashedPassword, isAdmin]);
+  res.json({ message: "User created!" });
+});
+
+// *** ROM UPLOAD ***
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const { system } = req.body;
+    const uploadPath = path.join(__dirname, `roms/${system}`);
+    if (!fs.existsSync(uploadPath)) fs.mkdirSync(uploadPath, { recursive: true });
+    cb(null, uploadPath);
+  },
+  filename: (req, file, cb) => cb(null, file.originalname),
+});
+const upload = multer({ storage });
+
+app.post("/admin/upload-rom", authenticate, upload.single("rom"), async (req, res) => {
+  if (!req.user.is_admin) return res.status(403).json({ error: "Forbidden" });
+
+  const { system } = req.body;
+  const romName = req.file.filename;
+  await pool.query("INSERT INTO roms (name, system, path) VALUES ($1, $2, $3) ON CONFLICT (name, system) DO NOTHING", [romName, system, `/roms/${system}/${romName}`]);
+  res.json({ message: "ROM uploaded successfully!" });
+});
+
+// *** GAME STREAMING: WebRTC Signaling ***
+io.on("connection", (socket) => {
+  socket.on("offer", (data) => socket.broadcast.emit("offer", data));
+  socket.on("answer", (data) => socket.broadcast.emit("answer", data));
+  socket.on("ice_candidate", (data) => socket.broadcast.emit("ice_candidate", data));
+  socket.on("game_input", (data) => socket.broadcast.emit("game_input", data));
+});
+
+// *** START SERVER ***
+server.listen(4000, () => console.log("Backend running on port 4000"));
+
+
 app.post("/save", authenticate, async (req, res) => {
   const { gameId, saveData } = req.body;
   await pool.query(
