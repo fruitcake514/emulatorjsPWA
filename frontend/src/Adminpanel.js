@@ -1,81 +1,37 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 
 const API_URL = "http://localhost:4000";
 
 const AdminPanel = ({ token }) => {
-  const [apiKeys, setApiKeys] = useState({});
-  const [newUser, setNewUser] = useState({ username: "", password: "", isAdmin: false });
+  const [romFile, setRomFile] = useState(null);
+  const [system, setSystem] = useState("");
 
-  useEffect(() => {
-    const fetchKeys = async () => {
-      const response = await fetch(`${API_URL}/admin/get-api-keys`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await response.json();
-      setApiKeys(data.reduce((acc, key) => ({ ...acc, [key.key]: key.value }), {}));
-    };
-    fetchKeys();
-  }, [token]);
+  const uploadRom = async () => {
+    const formData = new FormData();
+    formData.append("rom", romFile);
+    formData.append("system", system);
 
-  const updateApiKey = async (key, value) => {
-    await fetch(`${API_URL}/admin/set-api-key`, {
+    await fetch(`${API_URL}/admin/upload-rom`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ key, value }),
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData,
     });
-    setApiKeys({ ...apiKeys, [key]: value });
-  };
 
-  const createUser = async () => {
-    await fetch(`${API_URL}/admin/create-user`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify(newUser),
-    });
-    setNewUser({ username: "", password: "", isAdmin: false });
-    alert("User created!");
+    alert("ROM uploaded!");
   };
 
   return (
     <div>
-      <h1>Admin Settings</h1>
-
-      <h2>API Keys</h2>
-      <input
-        type="text"
-        placeholder="IGDB API Key"
-        value={apiKeys.IGDB_API_KEY || ""}
-        onChange={(e) => updateApiKey("IGDB_API_KEY", e.target.value)}
-      />
-      <input
-        type="text"
-        placeholder="WebRTC API Key"
-        value={apiKeys.WEBRTC_API_KEY || ""}
-        onChange={(e) => updateApiKey("WEBRTC_API_KEY", e.target.value)}
-      />
-
-      <h2>Create User</h2>
-      <input
-        type="text"
-        placeholder="Username"
-        value={newUser.username}
-        onChange={(e) => setNewUser({ ...newUser, username: e.target.value })}
-      />
-      <input
-        type="password"
-        placeholder="Password"
-        value={newUser.password}
-        onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
-      />
-      <label>
-        Admin:
-        <input
-          type="checkbox"
-          checked={newUser.isAdmin}
-          onChange={(e) => setNewUser({ ...newUser, isAdmin: e.target.checked })}
-        />
-      </label>
-      <button onClick={createUser}>Create User</button>
+      <h2>Admin Panel</h2>
+      <h3>Upload ROM</h3>
+      <select onChange={(e) => setSystem(e.target.value)}>
+        <option value="">Select System</option>
+        <option value="nes">NES</option>
+        <option value="snes">SNES</option>
+        <option value="ps1">PS1</option>
+      </select>
+      <input type="file" onChange={(e) => setRomFile(e.target.files[0])} />
+      <button onClick={uploadRom}>Upload ROM</button>
     </div>
   );
 };
