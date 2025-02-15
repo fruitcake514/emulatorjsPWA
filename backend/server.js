@@ -16,6 +16,30 @@ app.post("/save", authenticate, async (req, res) => {
     [req.user.id, gameId, saveData]);
   res.json({ message: "Game saved!" });
 });
+app.post("/admin/set-api-key", authenticate, async (req, res) => {
+  if (!req.user.is_admin) return res.status(403).json({ error: "Forbidden" });
+
+  const { key, value } = req.body;
+  await pool.query("INSERT INTO settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value",
+    [key, value]);
+  res.json({ message: "API key saved!" });
+});
+
+app.get("/admin/get-api-keys", authenticate, async (req, res) => {
+  if (!req.user.is_admin) return res.status(403).json({ error: "Forbidden" });
+
+  const result = await pool.query("SELECT key, value FROM settings");
+  res.json(result.rows);
+});
+
+app.post("/admin/create-user", authenticate, async (req, res) => {
+  if (!req.user.is_admin) return res.status(403).json({ error: "Forbidden" });
+
+  const { username, password, isAdmin } = req.body;
+  await pool.query("INSERT INTO users (username, password, is_admin) VALUES ($1, $2, $3)",
+    [username, password, isAdmin]);
+  res.json({ message: "User created!" });
+});
 
 app.get("/load/:gameId", authenticate, async (req, res) => {
   const { gameId } = req.params;
