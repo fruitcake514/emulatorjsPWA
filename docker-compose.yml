@@ -1,0 +1,46 @@
+version: "3.8"
+
+services:
+  backend:
+    image: ghcr.io/fruitcake514/emulatorjsPWA/backend:latest
+    restart: always
+    ports:
+      - "4000:4000"
+    env_file:
+      - backend/.env
+    volumes:
+      - backend-data:/app/data
+      - roms:/app/roms
+    depends_on:
+      - db
+
+  frontend:
+    image: ghcr.io/fruitcake514/emulatorjsPWA/frontend:latest
+    restart: always
+    ports:
+      - "3000:3000"
+
+  emulator:
+    image: ghcr.io/fruitcake514/emulatorjsPWA/backend:latest
+    restart: always
+    ports:
+      - "8080:8080"
+    volumes:
+      - roms:/usr/share/emulator/roms
+      - saves:/usr/share/emulator/saves
+
+  db:
+    image: postgres:latest
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: games
+    volumes:
+      - db-data:/var/lib/postgresql/data
+
+volumes:
+  backend-data:
+  roms:
+  saves:
+  db-data:
