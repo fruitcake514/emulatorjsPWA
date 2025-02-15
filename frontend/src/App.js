@@ -1,38 +1,44 @@
 import React, { useState, useEffect, useRef } from "react";
 import io from "socket.io-client";
 import { BrowserRouter as Router, Route, Link, Switch } from "react-router-dom";
-import Gamepad from "./Gamepad";
+import GameLibrary from "./GameLibrary";
 import AdminPanel from "./AdminPanel";
+import Gamepad from "./Gamepad";
 
 const API_URL = "http://localhost:4000";
 const socket = io(API_URL);
 
 const App = () => {
-  const [games, setGames] = useState([]);
   const [token, setToken] = useState("");
+  const [isAdmin, setIsAdmin] = useState(false);
   const [gameId, setGameId] = useState(null);
   const videoRef = useRef(null);
   const peerConnection = useRef(null);
 
   useEffect(() => {
-    const fetchGames = async () => {
-      const response = await fetch(`${API_URL}/games`, {
+    if (!token) return;
+
+    const fetchUser = async () => {
+      const response = await fetch(`${API_URL}/user`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await response.json();
-      setGames(data);
+      setIsAdmin(data.isAdmin);
     };
-    if (token) fetchGames();
+    
+    fetchUser();
   }, [token]);
 
   const handleLogin = async () => {
     const response = await fetch(`${API_URL}/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username: "user", password: "pass" }),
+      body: JSON.stringify({ username: "admin", password: "password" }),
     });
+
     const data = await response.json();
     setToken(data.token);
+    setIsAdmin(data.isAdmin);
   };
 
   const startGame = async (id) => {
@@ -55,63 +61,27 @@ const App = () => {
     socket.emit("webrtc_offer", { target: id, offer });
   };
 
-  const saveGame = async () => {
-    await fetch(`${API_URL}/save`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ gameId, saveData: "example_save_data" }),
-    });
-  };
-
-  const loadGame = async () => {
-    const response = await fetch(`${API_URL}/load/${gameId}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    const data = await response.json();
-    console.log("Loaded save:", data);
-  };
-
   return (
     <Router>
       <nav>
         <Link to="/">Home</Link>
-        {token && <Link to="/admin">Admin Panel</Link>}
+        {isAdmin && <Link to="/admin">Admin Panel</Link>}
       </nav>
       <Switch>
         <Route path="/" exact>
-          <div>
-            <h1>Game Library</h1>
-            {!token ? (
-              <button onClick={handleLogin}>Login</button>
-            ) : (
-              <ul>
-                {games.map((game) => (
-                  <li key={game.id}>
-                    <img src={game.cover?.url} alt={game.name} />
-                    <p>{game.name}</p>
-                    <button onClick={() => startGame(game.id)}>Play</button>
-                  </li>
-                ))}
-              </ul>
-            )}
-            {gameId && (
-              <div>
-                <h2>Streaming Game...</h2>
-                <video ref={videoRef} autoPlay playsInline></video>
-                <button onClick={saveGame}>Save Game</button>
-                <button onClick={loadGame}>Load Game</button>
-                <Gamepad sendInput={(button, state) => socket.emit("game_input", { button, state })} />
-              </div>
-            )}
-          </div>
+          <GameLibrary token={token} startGame={startGame} />
         </Route>
         <Route path="/admin">
           <AdminPanel token={token} />
         </Route>
       </Switch>
+      {gameId && (
+        <div>
+          <h2>Streaming Game...</h2>
+          <video ref={videoRef} autoPlay playsInline></video>
+          <Gamepad sendInput={(button, state) => socket.emit("game_input", { button, state })} />
+        </div>
+      )}
     </Router>
   );
 };
