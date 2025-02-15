@@ -5,7 +5,7 @@ import GameLibrary from "./GameLibrary";
 import AdminPanel from "./AdminPanel";
 import Gamepad from "./Gamepad";
 
-const API_URL = "http://localhost:4000";
+const API_URL = process.env.REACT_APP_API_URL || "http://localhost:4000";
 const socket = io(API_URL);
 
 const App = () => {
